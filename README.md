@@ -30,6 +30,8 @@
     * 函数计算（Function Compute, FC）
     * 函数工作流 （Function Flow, FnF）
     * 访问控制（RAM）
+
+* 本地安装应用部署工具Fun [链接](https://help.aliyun.com/document_detail/140283.html)
     
 #### 编译打包发布
 * 编译
