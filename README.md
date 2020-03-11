@@ -26,10 +26,12 @@
 
 #### 前置条件
 * 开通如下服务
-    * 对象存储服务（Object Storage Service，OSS）
-    * 函数计算（Function Compute, FC）
-    * 函数工作流 （Function Flow, FnF）
-    * 访问控制（RAM）
+    * 视觉智能开放平台-人脸人体服务 [链接](https://vision.aliyun.com/facebody)
+    * 函数计算（Function Compute, FC） [链接](https://www.aliyun.com/product/fc)
+    * 函数工作流 （Function Flow, FnF） [链接](https://www.aliyun.com/product/fnf)
+    * 对象存储服务（Object Storage Service，OSS） [链接](https://www.aliyun.com/product/oss)
+    * 访问控制（RAM） [链接](https://buy.aliyun.com/ram)
+
 
 * 本地安装应用部署工具Fun [链接](https://help.aliyun.com/document_detail/140283.html)
     
@@ -40,15 +42,15 @@
     * 拷贝工作流文件到 ```./.fun/build/artifacts/``` 目录下
 
         ```
-        cp viapi-detect-mask-demo-flow-serial.yaml ./.fun/build/artifacts/ ``` 
+        cp viapi-detect-mask-demo-flow-serial.yaml ./.fun/build/artifacts/
         ```
 
     * 到 ```.fun/build/artifacts/```下执行package命令
 
         ```
          cd .fun/build/artifacts/
-         ### 下面的viapi-test为发布ak有权限的bucket名称，可以替换为自有的bucket
-         fun package --oss-bucket viapi-test -t template.yml
+         ### 下面的viapi-demo为发布ak有权限的bucket名称，可以替换为自有的bucket
+         fun package --oss-bucket viapi-demo -t template.yml
         ```
 
 * 发布
