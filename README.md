@@ -9,20 +9,27 @@
         * 没有人脸： 不做处理
     * 把整体结果作为json文件写入到target目录中
 
+### 工作原理
+
+* 资源创建： 通过 ROS 调用 FC 创建 OSS bucket，并在 bucket 上创建 source 和 target 文件夹
+* 事件驱动：OSS 事件源可以直接自动触发函数的执行
+* FNF 编排流程，会结合人脸识别、单人口罩识别、图片裁剪服务，实现多人脸的口罩识别并输出多张人脸图片和所属区域
+* 大致流程图如下所示
+<img src="https://viapi-demo.oss-cn-shanghai.aliyuncs.com/function/detectMaskFlow.svg">
+
 ### 文件说明
 * template.yml 为模板
 * viapi-detect-mask-demo-flow-serial.yaml 是工作流文件
     * 由于目前对外的viapi的免费qps只有1~2，所以多人的口罩识别使用串行处理
-    * 流程图参照： ![图片](./workflow.svg)
     
 ### 操作步骤
 
 #### 前置条件
-* 开通服务
-    * OSS
-    * 函数计算
-    * 函数工作流
-    * RAM
+* 开通如下服务
+    * 对象存储服务（Object Storage Service，OSS）
+    * 函数计算（Function Compute, FC）
+    * 函数工作流 （Function Flow, FnF）
+    * 访问控制（RAM）
     
 #### 编译打包发布
 * 编译
