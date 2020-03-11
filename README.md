@@ -9,6 +9,8 @@
         * 没有人脸： 不做处理
     * 把整体结果作为json文件写入到target目录中
 
+* 备注：样例中的FC、FnF目前仅支持上海region
+
 ### 工作原理
 
 * 资源创建： 通过 ROS 调用 FC 创建 OSS bucket，并在 bucket 上创建 source 和 target 文件夹
