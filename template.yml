@@ -1,0 +1,165 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Transform: 'Aliyun::Serverless-2018-04-03'
+Parameters:
+  FunExecuteVersion:
+    Type: Number
+    Default: 1
+Resources:
+
+  viapi-detect-mask-demo:
+    Type: 'Aliyun::Serverless::Service'
+    Properties:
+      Description: 'fnf-viapi-detect-mask'
+      LogConfig: # optional, config log for function excute
+        Project: viapi-function-log
+        Logstore: function-log
+      InternetAccess: true
+      Policies:
+      - Version: '1' # Allow ListObjects, Get/PutObject, and FC InvokeFunction
+        Statement:
+        - Effect: Allow
+          Action:
+          - oss:PutBucket
+          - oss:PutObject
+          - oss:GetObject
+          - oss:ListObjects
+          - oss:GetObjectAcl
+          - oss:GetBucketLocation
+          - oss:GetBucketWebsite
+          - fc:InvokeFunction
+          - viapi-facebody:*
+          Resource: '*'
+
+    detect-face:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: com.alibaba.viapi.function.demo.function.DetectFaceFC::handleRequest
+        Runtime: java8
+        Timeout: 600
+        MemorySize: 1024
+        CodeUri: './'
+
+    get-crop-image:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: com.alibaba.viapi.function.demo.function.GetCropImageFC::handleRequest
+        Runtime: java8
+        Timeout: 600
+        MemorySize: 1024
+        CodeUri: './'
+
+    image-crop:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: com.alibaba.viapi.function.demo.function.ImageCropFC::handleRequest
+        Runtime: java8
+        Timeout: 600
+        MemorySize: 1024
+        CodeUri: './'
+
+    detect-mask:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: com.alibaba.viapi.function.demo.function.DetectMaskFC::handleRequest
+        Runtime: java8
+        Timeout: 600
+        MemorySize: 1024
+        CodeUri: './'
+
+    merge-result:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: com.alibaba.viapi.function.demo.function.MergeFC::handleRequest
+        Runtime: java8
+        Timeout: 600
+        MemorySize: 1024
+        CodeUri: './'
+
+    oss-init:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: com.alibaba.viapi.function.demo.function.OSSInitFC::handleRequest
+        Runtime: java8
+        Timeout: 600
+        MemorySize: 1024
+        CodeUri: './'
+        EnvironmentVariables:
+          SOURCE_DST: source
+          OUTPUT_DST: target
+          REGION: cn-shanghai
+
+  function-invoke:
+    Type: ALIYUN::FC::FunctionInvoker
+    DependsOn:
+      - viapi-detect-mask-demo
+    Properties:
+      FunctionName:
+        Fn::GetAtt: ["viapi-detect-mask-demooss-init", "FunctionName"]
+      ServiceName:
+        Fn::GetAtt: ["viapi-detect-mask-demo", "ServiceName"]
+      Async: false
+      Event: '{}'
+      ExecuteVersion:
+        Ref: FunExecuteVersion
+
+  viapi-detect-mask-demo-flow:
+    Type: 'Aliyun::Serverless::Flow'
+    DependsOn:
+      - viapi-detect-mask-demo
+    Properties:
+      Description: 'FnF image processing demo flow'
+      DefinitionUri: './viapi-detect-mask-demo-flow-serial.yaml'
+      Policies:
+      - AliyunFCInvocationAccess
+
+  oss-trigger:
+    Type: 'Aliyun::Serverless::Service'
+    DependsOn:
+      - viapi-detect-mask-demo
+      - function-invoke
+      - viapi-detect-mask-demo-flow
+    Properties:
+      Description: oss trigger function to call fnf to process image
+      LogConfig: # optional, config log for function excute
+        Project: viapi-function-log
+        Logstore: function-log
+      Policies:
+      - Version: '1' # Allow ListObjects, Get/PutObject, MNS SendMessage and FC InvokeFunction
+        Statement:
+        - Effect: Allow
+          Action:
+          - fnf:*
+          - log:*
+          Resource: '*'
+
+    trigger-fnf:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: com.alibaba.viapi.function.demo.function.ImageFileAddTriggerFC::handleRequest
+        Runtime: java8
+        Timeout: 120
+        MemorySize: 128
+        CodeUri: './'
+        EnvironmentVariables:
+          OUTPUT_DST: target
+          FLOW_NAME:
+            Fn::GetAtt: ["viapi-detect-mask-demo-flow", "Name"]
+          MAX_IMAGE_FILE_SIZE: 3145728  # max file size : 3M
+      Events:
+        oss-t:
+          Type: OSS
+          Properties:
+            Events:
+            - 'oss:ObjectCreated:PutObject'
+            - 'oss:ObjectCreated:PostObject'
+            - 'oss:ObjectCreated:CompleteMultipartUpload'
+            Filter:
+              Key:
+                Prefix: source/
+                Suffix: ''
+            BucketName:
+              Fn::GetJsonValue:
+                - 'bucketName'
+                - Fn::GetAtt:
+                    - 'function-invoke'
+                    - 'Result'

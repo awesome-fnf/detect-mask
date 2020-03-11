@@ -1,0 +1,189 @@
+# Input:
+# {
+#   "ossRegion": "cn-shanghai",
+#   "ossBucketName": "viapi-func-demo-1581575130147-10",
+#   "outputTargetKey": "target",
+#   "imageOssUrl": "oss://viapi-func-demo-1581575130147-10/source/multiPerson.jpg"
+# }
+version: v1beta1
+type: flow
+steps:
+- type: task
+  name: detectFace
+  resourceArn: !Ref viapi-detect-mask-demo/detect-face
+  outputMappings:
+  - target: faceCount
+    source: $local.faceCount
+  - target: detectFaceImageList
+    source: $local.detectFaceImageList
+  retry:
+  - errors:
+    - FC.ResourceThrottled
+    - FC.ResourceExhausted
+    - FC.InternalServerError
+    - FC.Unknown
+    - FnF.TaskTimeout
+    intervalSeconds: 2
+    maxAttempts: 10
+    multiplier: 1.5
+- type: choice
+  name: detectMaskByPersonCount
+  choices:
+  - condition: $.faceCount <= 0
+    steps:
+    - type: pass
+      name: InitEmptyResult
+      outputMappings:
+      - target: singleFaceImage
+        source: {}
+      - target: detectMaskImageList
+        source: []
+    goto: MergeRresult
+  - condition: $.faceCount == 1
+    steps:
+    - type: task
+      name: DetectMaskA
+      resourceArn: !Ref viapi-detect-mask-demo/detect-mask
+      retry:
+      - errors:
+        - FC.ResourceThrottled
+        - FC.ResourceExhausted
+        - FC.InternalServerError
+        - FC.Unknown
+        - FnF.TaskTimeout
+        intervalSeconds: 2
+        maxAttempts: 10
+        multiplier: 1.5
+      inputMappings:
+      - target: imageOssUrl
+        source: $input.imageOssUrl
+      - target: ossRegion
+        source: $input.ossRegion
+      outputMappings:
+      - target: singleFaceImage
+        source: $local.faceImage
+      - target: detectMaskImageList
+        source: []
+  default:
+    steps:
+    - type: task
+      name: GetCropImageA
+      resourceArn: !Ref viapi-detect-mask-demo/get-crop-image
+      inputMappings:
+      - target: detectMaskImageList
+        source: $input.detectFaceImageList
+      - target: faceIndex
+        source: -1
+      outputMappings:
+      - target: faceIndex
+        source: 0
+      - target: detectFaceImage
+        source: $local.detectFaceImage
+      - target: detectMaskImageList
+        source: $local.detectMaskImageList
+    - type: task
+      name: ImageCrop
+      resourceArn: !Ref viapi-detect-mask-demo/image-crop
+      retry:
+      - errors:
+        - FC.ResourceThrottled
+        - FC.ResourceExhausted
+        - FC.InternalServerError
+        - FC.Unknown
+        - FnF.TaskTimeout
+        intervalSeconds: 1
+        maxAttempts: 3
+        multiplier: 1.5
+      inputMappings:
+      - target: imageOssPath
+        source: $input.imageOssUrl
+      - target: ossRegion
+        source: $input.ossRegion
+      - target: ossBucketName
+        source: $input.ossBucketName
+      - target: faceImage
+        source: $local.detectFaceImage
+      outputMappings:
+      - target: cropFaceImage
+        source: $local.faceImage
+    - type: task
+      name: DetectMaskB
+      resourceArn: !Ref viapi-detect-mask-demo/detect-mask
+      retry:
+      - errors:
+        - FC.ResourceThrottled
+        - FC.ResourceExhausted
+        - FC.InternalServerError
+        - FC.Unknown
+        - FnF.TaskTimeout
+        intervalSeconds: 3
+        maxAttempts: 10
+        multiplier: 1.5
+      inputMappings:
+      - target: imageOssUrl
+        source: $local.cropFaceImage.cropOSSUrl
+      - target: ossRegion
+        source: $input.ossRegion
+      - target: faceImage
+        source: $local.cropFaceImage
+      outputMappings:
+      - target: detectMaskImage
+        source: $local.faceImage
+    - type: task
+      name: GetCropImageB
+      resourceArn: !Ref viapi-detect-mask-demo/get-crop-image
+      inputMappings:
+      - target: detectMaskImageList
+        source: $local.detectMaskImageList
+      - target: faceIndex
+        source: $local.faceIndex
+      - target: detectMaskImage
+        source: $local.detectMaskImage
+      outputMappings:
+      - target: detectMaskImageList
+        source: $local.detectMaskImageList
+      - target: faceIndex
+        source: $local.faceIndex
+      - target: detectFaceImage
+        source: $local.detectFaceImage
+    - type: choice
+      name: ImageCropLoopCheck
+      choices:
+      - condition: $.faceIndex < $.faceCount
+        goto: ImageCrop
+      default:
+        goto: emptyStep
+    - type: pass
+      name: emptyStep
+      outputMappings:
+      - target: singleFaceImage
+        source: {}
+
+- type: task
+  name: MergeRresult
+  resourceArn: !Ref viapi-detect-mask-demo/merge-result
+  inputMappings:
+  - target: outputOssFolderKey
+    source: $input.outputOssFolderKey
+  - target: imageOssUrl
+    source: $input.imageOssUrl
+  - target: ossBucketName
+    source: $input.ossBucketName
+  - target: ossRegion
+    source: $input.ossRegion
+  - target: faceCount
+    source: $local.faceCount
+  - target: faceImageList
+    source: $local.detectMaskImageList
+  - target: singleFaceImage
+    source: $local.singleFaceImage
+  retry:
+  - errors:
+    - FC.ResourceThrottled
+    - FC.ResourceExhausted
+    - FC.InternalServerError
+    - FC.Unknown
+    - FnF.TaskTimeout
+    intervalSeconds: 2
+    maxAttempts: 3
+    multiplier: 1.5
