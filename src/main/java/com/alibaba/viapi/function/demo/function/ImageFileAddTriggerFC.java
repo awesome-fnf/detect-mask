@@ -1,26 +1,28 @@
 package com.alibaba.viapi.function.demo.function;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.viapi.function.demo.event.oss.Event;
-import com.alibaba.viapi.function.demo.event.oss.OSSEvent;
-import com.alibaba.viapi.function.demo.event.oss.Oss;
-import com.alibaba.viapi.function.demo.pojo.DetectFaceFCRequest;
+import com.alibaba.viapi.function.demo.pojo.ExecutionInput;
 import com.alibaba.viapi.function.demo.util.OSSUtils;
 import com.alibaba.viapi.function.demo.util.SystemUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.aliyun.fc.runtime.Context;
+import com.aliyun.fc.runtime.event.OSSEvent;
 import com.aliyun.fc.runtime.FunctionComputeLogger;
-import com.aliyun.fc.runtime.PojoRequestHandler;
+import com.aliyun.fc.runtime.StreamRequestHandler;
+import com.aliyun.oss.OSSClient;
 import com.aliyuncs.fnf.model.v20190315.StartExecutionRequest;
 
 /**
  * @author benxiang.hhq
  */
-public class ImageFileAddTriggerFC extends BasePopFC implements PojoRequestHandler<OSSEvent, String> {
+public class ImageFileAddTriggerFC extends BasePopFC implements StreamRequestHandler {
 
     private static final String FLOW_NAME = "FLOW_NAME";
     private static final String OUTPUT_DST = "OUTPUT_DST";
@@ -35,23 +37,26 @@ public class ImageFileAddTriggerFC extends BasePopFC implements PojoRequestHandl
     }
 
     @Override
-    public String handleRequest(OSSEvent ossEvent, Context context) {
+    public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context) throws IOException {
         try {
             this.initialize(context);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        FunctionComputeLogger logger = context.getLogger();
-        Event event = ossEvent.getEvents().get(0);
+        ObjectMapper mapper=new ObjectMapper();
+        OSSEvent ossEvent = mapper.readValue(inputStream, OSSEvent.class);
 
-        String ossRegion = event.getRegion();
-        Oss oss = event.getOss();
-        String ossBucketName = oss.getBucket().getName();
-        String ossKey = oss.getObject().getKey();
+        FunctionComputeLogger logger = context.getLogger();
+        OSSEvent.Event event = ossEvent.events[0];
+
+        String ossRegion = event.region;
+        OSSEvent.Event.Oss oss = event.oss;
+        String ossBucketName = oss.bucket.name;
+        String ossKey = oss.object.key;
 
         String extension = OSSUtils.getExtension(ossKey);
         if (!SUPPORT_EXTENSIONS.contains(extension)) {
-            return "ok";
+            return ;
         }
 
         String flowName = SystemUtils.getStringEnvValue(FLOW_NAME, "viapi-detect-mask-demo-shanghai");
@@ -60,20 +65,23 @@ public class ImageFileAddTriggerFC extends BasePopFC implements PojoRequestHandl
         StartExecutionRequest request = new StartExecutionRequest();
         request.setFlowName(flowName);
 
-        if ( oss.getObject().getSize() > maxImageFileSize ) {
-            return "ok";
+        if ( oss.object.size > maxImageFileSize ) {
+            return ;
         }
 
-        String input = JSON.toJSONString(DetectFaceFCRequest.builder()
-                                             .imageOssUrl(OSSUtils.buildOssPath(ossBucketName, ossKey))
+        OSSClient ossClient = OSSUtils.buildClient(ossRegion,context.getExecutionCredentials());
+        String imageOssUrl = OSSUtils.buildOssPath(ossBucketName, ossKey);
+        String input = JSON.toJSONString(ExecutionInput.builder()
+                                             .imageOssUrl(imageOssUrl)
                                              .ossRegion(ossRegion)
                                              .outputOssFolderKey(outputOssFolderKey)
                                              .ossBucketName(ossBucketName)
+                                             .imageHttpUrl(OSSUtils.generatePresignedUrl(ossClient, imageOssUrl, null))
                                              .build());
         request.setInput(input);
         try {
             getAcsResponse(fnfAcsClient, request, logger);
-            return "ok";
+            return ;
         } catch (Exception e) {
             throw new RuntimeException(e );
         }

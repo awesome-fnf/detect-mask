@@ -18,8 +18,6 @@ import com.aliyun.fc.runtime.PojoRequestHandler;
 import com.aliyun.oss.OSSClient;
 import com.aliyuncs.exceptions.ClientException;
 import com.aliyuncs.exceptions.ServerException;
-import com.aliyuncs.facebody.model.v20191230.DetectFaceRequest;
-import com.aliyuncs.facebody.model.v20191230.DetectFaceResponse;
 import org.apache.commons.lang3.tuple.Pair;
 
 /**
@@ -45,31 +43,22 @@ public class DetectFaceFC extends BasePopFC
             throw new RuntimeException("output folder is invalid. detectFaceFCRequest=" + JSON.toJSONString(detectFaceFCRequest));
         }
 
-        DetectFaceRequest req = new DetectFaceRequest();
-
-
-        OSSClient ossClient = OSSUtils.buildClient(detectFaceFCRequest.getOssRegion(),
-                                                   context.getExecutionCredentials());
-        String imageHttpUrls = OSSUtils.generatePresignedUrl(ossClient, imageOssUrl, null);
-        req.setImageURL(imageHttpUrls);
         try {
-            DetectFaceResponse resp = getAcsResponse(viapiAcsClient, req, logger);
-            return transResult(detectFaceFCRequest, resp);
+            return transResult(detectFaceFCRequest);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private DetectFaceFCResponse transResult(DetectFaceFCRequest detectMaskFCRequest, DetectFaceResponse resp) {
+    private DetectFaceFCResponse transResult(DetectFaceFCRequest detectMaskFCRequest) {
         return DetectFaceFCResponse.builder()
-            .faceCount(resp.getData().getFaceCount())
-            .detectFaceImageList(transfer(resp, detectMaskFCRequest)).build();
-
+            .faceCount(detectMaskFCRequest.getFaceCount())
+            .detectFaceImageList(transfer(detectMaskFCRequest)).build();
     }
 
-    private List<FaceImage> transfer(DetectFaceResponse resp, DetectFaceFCRequest detectFaceFCRequest) {
-        int faceCount = resp.getData().getFaceCount();
-        List<Integer> faceRectangles = resp.getData().getFaceRectangles();
+    private List<FaceImage> transfer(DetectFaceFCRequest detectFaceFCRequest) {
+        int faceCount = detectFaceFCRequest.getFaceCount();
+        List<Integer> faceRectangles = detectFaceFCRequest.getFaceRectangles();
         int index;
         List<FaceImage> list = new ArrayList<>();
         for(int i = 0; i < faceCount; i++) {

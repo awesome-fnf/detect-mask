@@ -1,19 +1,21 @@
 package com.alibaba.viapi.function.demo.pojo;
 
-import com.alibaba.viapi.function.demo.object.ImageEdge;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * @author benxiang.hhq
+ * @author yibo.fyb
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ImageCropResponse {
+public class ExecutionInput {
+    private String imageOssUrl;
     private String imageHttpUrl;
+    private String ossBucketName;
+    private String ossRegion;
+    private String outputOssFolderKey;
 }

@@ -4,7 +4,6 @@ import java.util.List;
 
 import com.alibaba.viapi.function.demo.object.FaceImage;
 
-import com.aliyuncs.facebody.model.v20191230.DetectMaskResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

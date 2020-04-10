@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * @author benxiang.hhq
  */
@@ -13,8 +15,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DetectFaceFCRequest {
+    private Integer faceCount;
     private String imageOssUrl;
+    private List<Integer> faceRectangles;
     private String ossBucketName;
-    private String ossRegion;
     private String outputOssFolderKey;
 }

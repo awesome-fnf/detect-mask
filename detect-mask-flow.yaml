@@ -1,0 +1,197 @@
+# Input:
+# {
+#   "ossRegion": "cn-shanghai",
+#   "ossBucketName": "viapi-func-demo-1581575130147-10",
+#   "outputTargetKey": "target",
+#   "imageOssUrl": "oss://viapi-func-demo-1581575130147-10/source/multiPerson.jpg"
+# }
+version: v1beta1
+type: flow
+steps:
+  - type: task
+    name: detectFace
+    action: facebody:DetectFace
+    inputMappings:
+      - target: image
+        source: $input.imageHttpUrl
+    outputMappings:
+      - target: detectFaceData
+        source: $local.Data
+    serviceParams:
+      ImageURL: $.image
+  - type: choice
+    name: checkFaceExists
+    choices:
+      - condition: $.detectFaceData.FaceCount == 0
+        steps:
+          - type: pass
+            name: noFaceDetected
+    default:
+      steps:
+        - type: task
+          name: convertFace
+          resourceArn: !Ref viapi-detect-mask-demo/detect-face
+          inputMappings:
+            - target: faceCount
+              source: $input.detectFaceData.FaceCount
+            - target: faceRectangles
+              source: $input.detectFaceData.FaceRectangles
+            - target: imageOssUrl
+              source: $input.imageOssUrl
+            - target: ossBucketName
+              source: $input.ossBucketName
+            - target: outputOssFolderKey
+              source: $input.outputOssFolderKey
+          outputMappings:
+          - target: faceCount
+            source: $local.faceCount
+          - target: detectFaceImageList
+            source: $local.detectFaceImageList
+          retry:
+          - errors:
+            - FC.ResourceThrottled
+            - FC.ResourceExhausted
+            - FC.InternalServerError
+            - FC.Unknown
+            - FnF.TaskTimeout
+            intervalSeconds: 2
+            maxAttempts: 10
+            multiplier: 1.5
+        - type: pass
+          name: InitEmptyResult
+          outputMappings:
+            - target: singleFaceImage
+              source: {}
+            - target: detectMaskImageList
+              source: []
+        - type: choice
+          name: detectMaskByPersonCount
+          choices:
+            - condition: $.faceCount == 1
+              steps:
+                - type: task
+                  name: detectSingleMask
+                  action: facebody:DetectMask
+                  inputMappings:
+                    - target: image
+                      source: $input.imageHttpUrl
+                  outputMappings:
+                    - target: singleFaceImage
+                      source: $local.Data
+                  serviceParams:
+                    ImageURL: $.image
+
+          default:
+            # multi faces
+            steps:
+            - type: task
+              name: GetCropImageA
+              resourceArn: !Ref viapi-detect-mask-demo/get-crop-image
+              inputMappings:
+              - target: detectMaskImageList
+                source: $input.detectFaceImageList
+              - target: faceIndex
+                source: -1
+              outputMappings:
+              - target: faceIndex
+                source: 0
+              - target: detectFaceImage
+                source: $local.detectFaceImage
+              - target: detectMaskImageList
+                source: $local.detectMaskImageList
+            - type: task
+              name: ImageCrop
+              resourceArn: !Ref viapi-detect-mask-demo/image-crop
+              retry:
+              - errors:
+                - FC.ResourceThrottled
+                - FC.ResourceExhausted
+                - FC.InternalServerError
+                - FC.Unknown
+                - FnF.TaskTimeout
+                intervalSeconds: 1
+                maxAttempts: 3
+                multiplier: 1.5
+              inputMappings:
+              - target: imageOssPath
+                source: $input.imageOssUrl
+              - target: ossRegion
+                source: $input.ossRegion
+              - target: ossBucketName
+                source: $input.ossBucketName
+              - target: faceImage
+                source: $local.detectFaceImage
+              outputMappings:
+              - target: cropFaceImageHttpUrl
+                source: $local.imageHttpUrl
+
+            - type: task
+              name: detectMultiMasks
+              action: facebody:DetectMask
+              inputMappings:
+                - target: image
+                  source: $local.cropFaceImageHttpUrl
+              outputMappings:
+                - target: mulSingleFaceImage
+                  source: $local.Data
+              serviceParams:
+                ImageURL: $.image
+
+            - type: task
+              name: GetCropImageB
+              resourceArn: !Ref viapi-detect-mask-demo/get-crop-image
+              inputMappings:
+              - target: detectMaskImageList
+                source: $local.detectMaskImageList
+              - target: faceIndex
+                source: $local.faceIndex
+              - target: detectMaskImage
+                source: $local.mulSingleFaceImage
+              outputMappings:
+              - target: detectMaskImageList
+                source: $local.detectMaskImageList
+              - target: faceIndex
+                source: $local.faceIndex
+              - target: detectFaceImage
+                source: $local.detectFaceImage
+            - type: choice
+              name: ImageCropLoopCheck
+              choices:
+              - condition: $.faceIndex < $.faceCount
+                goto: ImageCrop
+              default:
+                goto: emptyStep
+            - type: pass
+              name: emptyStep
+              outputMappings:
+              - target: singleFaceImage
+                source: {}
+
+        - type: task
+          name: generateResult
+          resourceArn: !Ref viapi-detect-mask-demo/merge-result
+          inputMappings:
+          - target: outputOssFolderKey
+            source: $input.outputOssFolderKey
+          - target: imageOssUrl
+            source: $input.imageOssUrl
+          - target: ossBucketName
+            source: $input.ossBucketName
+          - target: ossRegion
+            source: $input.ossRegion
+          - target: faceCount
+            source: $local.faceCount
+          - target: faceImageList
+            source: $local.detectMaskImageList
+          - target: singleFaceImage
+            source: $local.singleFaceImage
+          retry:
+          - errors:
+            - FC.ResourceThrottled
+            - FC.ResourceExhausted
+            - FC.InternalServerError
+            - FC.Unknown
+            - FnF.TaskTimeout
+            intervalSeconds: 2
+            maxAttempts: 3
+            multiplier: 1.5

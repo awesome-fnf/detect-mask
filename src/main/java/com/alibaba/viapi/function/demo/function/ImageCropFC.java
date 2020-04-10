@@ -22,9 +22,10 @@ public class ImageCropFC implements PojoRequestHandler<ImageCropRequest, ImageCr
         OSSClient ossClient = OSSUtils.buildClient(ossRegion, context.getExecutionCredentials());
         try {
             ImageUtils.cutoutPicture(imageOssPath, faceImage, ossClient);
-            return ImageCropResponse.builder().faceImage(faceImage).build();
+            String imageHttpUrls = OSSUtils.generatePresignedUrl(ossClient, faceImage.getCropOSSUrl(), null);
+            return ImageCropResponse.builder().imageHttpUrl(imageHttpUrls).build();
         } catch (Exception e) {
-            return ImageCropResponse.builder().faceImage(imageCropRequest.getFaceImage()).build();
+            return ImageCropResponse.builder().imageHttpUrl("").build();
         }
     }
 }

@@ -21,8 +21,7 @@
 
 ### 文件说明
 * template.yml 为模板
-* viapi-detect-mask-demo-flow-serial.yaml 是工作流文件
-    * 由于目前对外的viapi的免费qps只有1~2，所以多人的口罩识别使用串行处理
+* detect-mask-flow.yaml 是工作流文件
     
 ### 操作步骤
 
@@ -39,26 +38,22 @@
     
 #### 编译打包发布
 * 编译
-    * 在根目录下执行：```fun build```
+    * 在根目录下执行：```IGNORE_TPL_VALIDATION=1 fun build```
 * 打包
     * 拷贝工作流文件到 ```./.fun/build/artifacts/``` 目录下
 
         ```
-        cp viapi-detect-mask-demo-flow-serial.yaml ./.fun/build/artifacts/
+        cp detect-mask-flow.yaml ./.fun/build/artifacts/
         ```
 
-    * 到 ```.fun/build/artifacts/```下执行package命令
+    * 在根目录下执行package命令
 
         ```
-         cd .fun/build/artifacts/
-         ### 下面的viapi-demo为发布ak有权限的bucket名称，可以替换为自有的bucket
-         fun package --oss-bucket viapi-demo -t template.yml
+         ### 下面的 mask-test-demo 为发布ak有权限的bucket名称，可以替换为自有的bucket
+         fun package --oss-bucket mask-test-demo template.yml
         ```
 
 * 发布
-    * 方式1： 把生成的template.packaged.yml 转成为json格式，然后存放到oss中，生成oss的http链接后，
-        可以通过如下格式拼接链接，直接唤起ros创建
-        ```
-        ### 格式： https://rosnext.console.aliyun.com/cn-shanghai/stacks/create?templateUrl=${json文件链接}&step=1&hideTemplateSelector=true
-        样例：https://rosnext.console.aliyun.com/cn-shanghai/stacks/create?templateUrl=http%3A%2F%2Fviapi-demo.oss-cn-shanghai.aliyuncs.com%2Ffunction%2FdetectMaskDemo2.json&step=1&hideTemplateSelector=true
-        ```
+    ```bash
+      fun deploy --use-ros --stack-name test
+    ```

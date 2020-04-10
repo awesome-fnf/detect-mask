@@ -6,21 +6,36 @@ import com.alibaba.viapi.function.demo.pojo.MergeResponse;
 import com.alibaba.viapi.function.demo.util.OSSUtils;
 
 import com.aliyun.fc.runtime.Context;
-import com.aliyun.fc.runtime.PojoRequestHandler;
+import com.aliyun.fc.runtime.StreamRequestHandler;
 import com.aliyun.oss.OSSClient;
 import org.apache.commons.lang3.tuple.Pair;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.MapperFeature;
 
 /**
  * @author benxiang.hhq
  */
-public class MergeFC implements PojoRequestHandler<MergeRequest, MergeResponse> {
+public class MergeFC implements StreamRequestHandler {
 
     @Override
-    public MergeResponse handleRequest(MergeRequest imageCropRequest, Context context) {
+    public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context) throws IOException {
+
+        ObjectMapper inputMapper=new ObjectMapper();
+        inputMapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES,true);
+        MergeRequest imageCropRequest = inputMapper.readValue(inputStream, MergeRequest.class);
+
         String outputJsonPath = buildOutputKey(imageCropRequest.getImageOssUrl(), imageCropRequest.getOutputOssFolderKey());
         OSSClient ossClient = OSSUtils.buildClient(imageCropRequest.getOssRegion(), context.getExecutionCredentials());
         OSSUtils.put(ossClient, outputJsonPath, JSON.toJSONString(imageCropRequest));
-        return MergeResponse.builder().data(outputJsonPath).build();
+
+        ObjectMapper outputMapper=new ObjectMapper();//先创建objmapper的对象
+        String output = outputMapper.writeValueAsString(MergeResponse.builder().data(outputJsonPath).build());
+        outputStream.write(output.getBytes());
+        return ;
     }
 
     private String buildOutputKey(String originalOssUrl, String outputKey) {

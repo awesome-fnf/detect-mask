@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FaceImage extends ImageEdge {
-    private Float faceProbabilityOfPersonDetect;
-    private Float faceProbabilityOfMaskDetect;
-    private Integer mask;
+    private String cropOSSUrl;
+    private Float FaceProbability;
+    private Integer Mask;
 }
