@@ -16,8 +16,6 @@
 * 资源创建： 通过 ROS 调用 FC 创建 OSS bucket，并在 bucket 上创建 source 和 target 文件夹
 * 事件驱动：OSS 事件源可以直接自动触发函数的执行
 * FNF 编排流程，会结合人脸识别、单人口罩识别、图片裁剪服务，实现多人脸的口罩识别并输出多张人脸图片和所属区域
-* 大致流程图如下所示
-<img src="https://viapi-demo.oss-cn-shanghai.aliyuncs.com/function/detectMaskFlow.svg">
 
 ### 文件说明
 * template.yml 为模板
