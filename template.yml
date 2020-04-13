@@ -36,8 +36,6 @@ Resources:
         Timeout: 600
         MemorySize: 1024
         CodeUri: ./
-        EnvironmentVariables:
-          CLASSPATH: /mnt/auto/java
     get-crop-image:
       Type: 'Aliyun::Serverless::Function'
       Properties:
@@ -46,8 +44,6 @@ Resources:
         Timeout: 600
         MemorySize: 1024
         CodeUri: ./
-        EnvironmentVariables:
-          CLASSPATH: /mnt/auto/java
     image-crop:
       Type: 'Aliyun::Serverless::Function'
       Properties:
@@ -56,8 +52,6 @@ Resources:
         Timeout: 600
         MemorySize: 1024
         CodeUri: ./
-        EnvironmentVariables:
-          CLASSPATH: /mnt/auto/java
     detect-mask:
       Type: 'Aliyun::Serverless::Function'
       Properties:
@@ -66,8 +60,6 @@ Resources:
         Timeout: 600
         MemorySize: 1024
         CodeUri: ./
-        EnvironmentVariables:
-          CLASSPATH: /mnt/auto/java
     merge-result:
       Type: 'Aliyun::Serverless::Function'
       Properties:
@@ -76,8 +68,6 @@ Resources:
         Timeout: 600
         MemorySize: 1024
         CodeUri: ./
-        EnvironmentVariables:
-          CLASSPATH: /mnt/auto/java
     oss-init:
       Type: 'Aliyun::Serverless::Function'
       Properties:
@@ -90,7 +80,6 @@ Resources:
           SOURCE_DST: source
           OUTPUT_DST: target
           REGION: cn-shanghai
-          CLASSPATH: /mnt/auto/java
   function-invoke:
     Type: 'ALIYUN::FC::FunctionInvoker'
     DependsOn:
@@ -130,6 +119,7 @@ Resources:
         Project: mask-demo
         Logstore: function-log
       Policies:
+        - AliyunOSSFullAccess
         - Version: '1'
           Statement:
             - Effect: Allow
